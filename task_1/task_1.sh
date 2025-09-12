@@ -36,20 +36,34 @@ log10() { calc "l($1) / l(10)"; }
 abs()   { calc "if ($1 < 0) -($1) else $1"; }
 pow()   { calc "e(l($1) * $2)"; }
 
+# Вычисление выражений содержащих PI
+eval_math_expression() {
+  local expr=$1
+
+  expr=${expr//π/$PI}
+
+  expr=${expr// /}
+
+  calc "$expr"
+}
+
 # --- Константы ---
-readonly BC_SCALE=10
-readonly PI=$(calc "4 * a(1)")
-readonly DEFAULT_X_0=$(calc "$PI / 6")
+readonly DEFAULT_BC_SCALE=10
 readonly DEFAULT_DATA_FILE="derivative_data.csv"
 readonly DEFAULT_PLOT_FILE="derivative_plot.png"
 readonly PLOT_SCRIPT="plot.gp"
+readonly DEFAULT_X_EXPRESSION="π/6"
 
 # --- Переопределяеммые переменные ---
-X_0=$DEFAULT_X_0
+BC_SCALE=$DEFAULT_BC_SCALE
+X_EXPRESSION=$DEFAULT_X_EXPRESSION
+X_0=""
+PI=""
+X_0=""
+DER_EXACT_VALUE=""
 DATA_FILE=$DEFAULT_DATA_FILE
 PLOT_FILE=$DEFAULT_PLOT_FILE
 
-DER_EXACT_VALUE=$(calc "c($X_0)")
 
 # --- Вычисление производной ---
 derivative_central() {
@@ -60,6 +74,14 @@ derivative_central() {
 }
 
 # --- Вспомогательные функции ---
+init_math_constants() {
+  PI=$(calc "4 * a(1)")
+
+  X_0=$(eval_math_expression "$X_EXPRESSION")
+
+  DER_EXACT_VALUE=$(cos "$X_0")
+}
+
 cleanup() {
   if [[ -f $PLOT_SCRIPT ]]; then 
     echo "Очистка временных файлов..."
@@ -69,7 +91,7 @@ cleanup() {
 
 print_point_info(){
   echo "Анализ погрешностей численного дифференцирования"
-  echo "Точка анализа: x ≈ $X_0"
+  echo "Точка анализа: x = $X_EXPRESSION ≈ $X_0"
   echo "Точное значение проивзодной: cos(π/6) = $DER_EXACT_VALUE"
 }
 
@@ -81,9 +103,14 @@ print_help() {
 
 Опции:
   -h, --help            Показать эту справку и выйти
-  -x, --x-point VALUE   Точка для анализа (по умолчанию: π/6 ≈ $DEFAULT_X_0)
+  -x, --x-point VALUE   Точка для анализа (по умолчанию: π/6)
   -d, --data-file FILE  Файл для данных CSV (по умолчанию: $DEFAULT_DATA_FILE)
   -p, --plot-file FILE  Файл для графика PNG (по умолчанию: $DEFAULT_PLOT_FILE)
+Примеры:
+  $0 -x "pi/6"           
+  $0 -x "π/4"            
+  $0 -x "sqrt(2)/2"         
+  $0 -x "pi/6 + 0.1"     
 EOF
 }
 
@@ -100,7 +127,7 @@ parse_args() {
           echo "Ошибка: $1 требует последующее значение"
           exit 1
         fi
-        X_0=$2
+        X_EXPRESSION="${2//pi/π}"
         shift 2
         ;;
 
@@ -170,11 +197,14 @@ EOF
 }
 
 main () {
+  check_dependencies
+
   # Обработчик отчистки на выходе
   trap cleanup EXIT INT TERM
 
   # Парсинг аргументов
   parse_args "$@"
+  init_math_constants
 
   print_point_info
   calc_der_error
