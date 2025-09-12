@@ -112,6 +112,8 @@ EOF
 }
 
 main () {
+  trap cleanup EXIT INT TERM
+
   print_point_info
   calc_der_error
   create_plot
