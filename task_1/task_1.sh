@@ -41,7 +41,7 @@ readonly BC_SCALE=10
 readonly PI=$(calc "4 * a(1)")
 readonly DEFAULT_X_0=$(calc "$PI / 6")
 readonly DEFAULT_DATA_FILE="derivative_data.csv"
-readonly DEFAULT_PLOT_FILE="derivative_data.png"
+readonly DEFAULT_PLOT_FILE="derivative_plot.png"
 readonly PLOT_SCRIPT="plot.gp"
 
 # --- Переопределяеммые переменные ---
@@ -61,16 +61,74 @@ derivative_central() {
 
 # --- Вспомогательные функции ---
 cleanup() {
-  echo "Очистка временных файлов..."
   if [[ -f $PLOT_SCRIPT ]]; then 
+    echo "Очистка временных файлов..."
     rm -f $PLOT_SCRIPT
   fi
 }
 
 print_point_info(){
   echo "Анализ погрешностей численного дифференцирования"
-  echo "Точка анализа: x = π/6 ≈ $X_0"
+  echo "Точка анализа: x ≈ $X_0"
   echo "Точное значение проивзодной: cos(π/6) = $DER_EXACT_VALUE"
+}
+
+print_help() {
+    cat << EOF
+Использование: $0 [ОПЦИИ]
+
+Анализ погрешностей численного дифференцирования функции sin(x)
+
+Опции:
+  -h, --help            Показать эту справку и выйти
+  -x, --x-point VALUE   Точка для анализа (по умолчанию: π/6 ≈ $DEFAULT_X_0)
+  -d, --data-file FILE  Файл для данных CSV (по умолчанию: $DEFAULT_DATA_FILE)
+  -p, --plot-file FILE  Файл для графика PNG (по умолчанию: $DEFAULT_PLOT_FILE)
+EOF
+}
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do 
+    case $1 in
+      -h | --help)
+        print_help
+        exit 0
+        ;;
+      
+      -x | --x-point)
+        if [[ -z $2 ]]; then
+          echo "Ошибка: $1 требует последующее значение"
+          exit 1
+        fi
+        X_0=$2
+        shift 2
+        ;;
+
+      -d|--data-file)
+          if [[ -z $2 ]]; then
+              echo "Ошибка: $1 требует значение"
+              exit 1
+          fi
+          DATA_FILE=$2
+          shift 2
+          ;;
+
+      -p|--plot-file)
+          if [[ -z $2 ]]; then
+              echo "Ошибка: $1 требует значение" >&2
+              exit 1
+          fi
+          PLOT_FILE=$2
+          shift 2
+          ;;
+
+      *)
+        print_help
+        exit 1
+        ;;
+
+    esac
+  done
 }
 
 # --- Основная программа ---
@@ -112,7 +170,11 @@ EOF
 }
 
 main () {
+  # Обработчик отчистки на выходе
   trap cleanup EXIT INT TERM
+
+  # Парсинг аргументов
+  parse_args "$@"
 
   print_point_info
   calc_der_error
