@@ -14,12 +14,28 @@ derivative_central() {
   echo "($f_right - $f_left) / (2 * $h)" | bc -l 
 }
 
+abs() {
+  echo "if ($1 < 0) -($1) else $1" | bc -l
+}
+
 main () {
   echo "Анализ погрешностей численного дифференцирования"
   echo "π = $PI"
   echo "Точка анализа: x = π/6 ≈ $X_0"
   echo "Точное значение: cos(π/6) = $DER_EXACT_VALUE"
-  derivative_central $X_0 0.001
+
+  local data_file="derivative_data.csv"
+  echo log_h log_error_central > $data_file
+
+  for log_h in $(seq -10 2 -2); do
+    local h=$(echo "10^$log_h" | bc -l)
+    local approx_central=$(derivative_central $X_0 $h)
+
+    local error_central=$(abs $(echo "$approx_central - $DER_EXACT_VALUE" | bc -l))
+    # echo $error_central
+    local log_error_central=$(echo "l($error_central)/l(10)" | bc -l)
+    echo $log_h $log_error_central >> $data_file
+  done
 }
 
 main
