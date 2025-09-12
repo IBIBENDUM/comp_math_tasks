@@ -5,6 +5,25 @@
 
 set -eu # Защита от использования неопределенных переменных и ошибок
 
+check_dependencies() {
+  local deps=("bc" "gnuplot")
+  local missing=()
+
+  for dep in ${deps[@]}; do 
+    if ! command $dep > /dev/null 2>&1; then
+      missing+=($dep)
+    fi
+  done
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "Ошибка: отсутствуют зависимости ${missing[*]}"
+    echo "Попробуйте: sudo apt install ${missing[*]}"
+    exit 1
+  fi
+}
+
+check_dependencies
+
 # --- Математические функции ---
 
 # Обертка над bc
@@ -19,10 +38,17 @@ pow()   { calc "e(l($1) * $2)"; }
 # --- Константы ---
 readonly BC_SCALE=10
 readonly PI=$(calc "4 * a(1)")
-readonly X_0=$(calc "$PI / 6")
-readonly DER_EXACT_VALUE=$(calc "c($X_0)")
-readonly DATA_FILE="derivative_data.csv"
-readonly PLOT_FILE="derivative_data.png"
+readonly DEFAULT_X_0=$(calc "$PI / 6")
+readonly DEFAULT_DATA_FILE="derivative_data.csv"
+readonly DEFAULT_PLOT_FILE="derivative_data.png"
+readonly PLOT_SCRIPT="plot.gp"
+
+# --- Переопределяеммые переменные ---
+X_O=$DEFAULT_X_0
+DATA_FILE=$DEFAULT_DATA_FILE
+PLOT_FILE=$DEFAULT_PLOT_FILE
+
+DER_EXACT_VALUE=$(calc "c($X_0)")
 
 # --- Вычисление производной ---
 derivative_central() {
@@ -32,12 +58,18 @@ derivative_central() {
   calc "($f_right - $f_left) / (2 * $h)"
 }
 
-# --- Основная программа ---
+# --- Вспомогательные функции ---
+cleanup() {
+  echo "Очистка временных файлов..."
+  if [[ -f $PLOT_SCRIPT ]]; then 
+    rm -f $PLOT_SCRIPT
+  fi
+}
+
 print_point_info(){
   echo "Анализ погрешностей численного дифференцирования"
-  echo "π = $PI"
   echo "Точка анализа: x = π/6 ≈ $X_0"
-  echo "Точное значение: cos(π/6) = $DER_EXACT_VALUE"
+  echo "Точное значение проивзодной: cos(π/6) = $DER_EXACT_VALUE"
 }
 
 calc_der_error(){
@@ -56,7 +88,7 @@ calc_der_error(){
 }
 
 create_plot() {
-    cat > plot.gp << EOF
+    cat > $PLOT_SCRIPT << EOF
       # Настройки вывода
       set terminal pngcairo enhanced font "Arial,12" size 800,600
       set output "$PLOT_FILE"
@@ -74,9 +106,10 @@ create_plot() {
       plot "$DATA_FILE" using 1:2 with linespoints title "Центральная разность"
 EOF
 
-    gnuplot plot.gp 2>/dev/null
+    gnuplot $PLOT_SCRIPT 2>/dev/null
 }
 
+# --- Основная программа ---
 main () {
   print_point_info
   calc_der_error
