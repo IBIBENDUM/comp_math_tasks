@@ -5,12 +5,13 @@
 
 set -eu # Защита от использования неопределенных переменных и ошибок
 
+# --- Проверка зависимостей ---
 check_dependencies() {
   local deps=("bc" "gnuplot")
   local missing=()
 
   for dep in ${deps[@]}; do 
-    if ! command $dep > /dev/null 2>&1; then
+    if ! command -v $dep > /dev/null 2>&1; then
       missing+=($dep)
     fi
   done
@@ -44,7 +45,7 @@ readonly DEFAULT_PLOT_FILE="derivative_data.png"
 readonly PLOT_SCRIPT="plot.gp"
 
 # --- Переопределяеммые переменные ---
-X_O=$DEFAULT_X_0
+X_0=$DEFAULT_X_0
 DATA_FILE=$DEFAULT_DATA_FILE
 PLOT_FILE=$DEFAULT_PLOT_FILE
 
@@ -72,6 +73,7 @@ print_point_info(){
   echo "Точное значение проивзодной: cos(π/6) = $DER_EXACT_VALUE"
 }
 
+# --- Основная программа ---
 calc_der_error(){
   echo log_h log_error_central > $DATA_FILE
 
@@ -109,11 +111,12 @@ EOF
     gnuplot $PLOT_SCRIPT 2>/dev/null
 }
 
-# --- Основная программа ---
 main () {
   print_point_info
   calc_der_error
   create_plot
 }
 
-main
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
