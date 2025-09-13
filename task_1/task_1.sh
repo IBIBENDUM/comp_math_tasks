@@ -54,9 +54,17 @@ readonly DEFAULT_PLOT_FILE="derivative_plot.png"
 readonly PLOT_SCRIPT="plot.gp"
 readonly DEFAULT_X_EXPRESSION="π/6"
 
-readonly RED='\033[0;31m'
-readonly YELLOW='\033[1;33m'
-readonly NC='\033[0m' # No Color
+if [[ -t 1 ]]; then
+  # Вывод в терминал
+  readonly RED='\033[0;31m'
+  readonly YELLOW='\033[1;33m'
+  readonly NC='\033[0m' # No Color
+else
+  # Вывод в файл
+  readonly RED=''
+  readonly YELLOW=''
+  readonly NC='' 
+fi
 
 # --- Переопределяеммые переменные ---
 BC_SCALE=$DEFAULT_BC_SCALE
