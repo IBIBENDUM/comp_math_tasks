@@ -262,7 +262,7 @@ main () {
   check_dependencies
 
   # Обработчик отчистки на выходе
-  trap cleanup EXIT INT TERM
+  trap 'cleanup; exit' EXIT INT TERM
 
   # Парсинг аргументов
   parse_args "$@"
