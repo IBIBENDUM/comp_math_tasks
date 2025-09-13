@@ -213,24 +213,20 @@ calc_der_error(){
 
   start_spinner "Вычисление погрешностей..."&
   local spinner_pid=$!
-
+  
+  local methods=("derivative_forward" "derivative_central" "derivative_second_order")
   for log_h in $(seq -10 0.1 -0.1); do
     local h=$(pow 10 $log_h)
+    local line="$log_h"
 
-    local approx_forward=$(derivative_forward $X_0 $h)
-    local approx_central=$(derivative_central $X_0 $h)
-    local approx_second=$(derivative_second_order $X_0 $h)
+    for method in "${methods[@]}"; do
+      local approx=$($method "$X_0" "$h")
+      local error=$(abs "$(calc "$approx - $DER_EXACT_VALUE")")
+      local log_error=$(log10 "$error")
+      line="$line,$log_error"
+    done
     
-    local error_forward=$(abs $(calc "$approx_forward - $DER_EXACT_VALUE"))
-    local error_central=$(abs $(calc "$approx_central - $DER_EXACT_VALUE"))
-    local error_second=$(abs $(calc "$approx_second - $DER_EXACT_VALUE"))
-    
-    local log_error_forward=$(log10 $error_forward)
-    local log_error_central=$(log10 $error_central)
-    local log_error_second=$(log10 $error_second)
-    
-    echo "$log_h,$log_error_forward,$log_error_central,$log_error_second" >> $DATA_FILE
-
+    echo "$line" >> "$DATA_FILE"
   done
 
   stop_spinner "$spinner_pid"
