@@ -101,6 +101,22 @@ cleanup() {
   fi
 }
 
+start_spinner() {
+  local spin="⣾⣷⣯⣟⡿⢿⣻⣽"
+  local i=0
+  while true; do
+    i=$(( (i+1) % ${#spin} ))
+    printf "\r${spin:$i:1} $1"
+    sleep 0.1
+  done
+}
+
+stop_spinner() {
+    local pid=$1
+    kill "$pid" 2>/dev/null
+    printf "\n"
+}
+
 print_point_info(){
   echo "Анализ погрешностей численного дифференцирования"
   echo "Точка анализа: x = $X_EXPRESSION ≈ $X_0"
@@ -174,7 +190,9 @@ parse_args() {
 calc_der_error(){
   echo log_h log_error_central > $DATA_FILE
 
-  echo "Вычисление погрешностей..."
+  start_spinner "Вычисление погрешностей..."&
+  local spinner_pid=$!
+
   for log_h in $(seq -10 0.1 -2); do
     local h=$(pow 10 $log_h)
     local approx_central=$(derivative_central $X_0 $h)
@@ -184,16 +202,18 @@ calc_der_error(){
     echo $log_h $log_error_central >> $DATA_FILE
   done
 
+  stop_spinner "$spinner_pid"
 }
 
 create_plot() {
+  echo "Построение графика..."
     cat > $PLOT_SCRIPT << EOF
       # Настройки вывода
       set terminal pngcairo enhanced font "Arial,12" size 800,600
       set output "$PLOT_FILE"
      
       # Заголовки и подписи 
-      set title "Зависимость погрешности от шага (x = π/6)"
+      set title "Зависимость погрешности от шага (x = $X_EXPRESSION)"
       set xlabel "log₁₀(h)"
       set ylabel "log₁₀(погрешности)"
       
