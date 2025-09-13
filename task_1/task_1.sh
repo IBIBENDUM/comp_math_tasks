@@ -17,8 +17,8 @@ check_dependencies() {
   done
 
   if [[ ${#missing[@]} -gt 0 ]]; then
-    echo "Ошибка: отсутствуют зависимости ${missing[*]}"
-    echo "Попробуйте: sudo apt install ${missing[*]}"
+    echo -e "${RED}Ошибка${NC}: отсутствуют зависимости ${missing[*]}"
+    echo -e "${YELLOW}Попробуйте${NC}: sudo apt install ${missing[*]}"
     exit 1
   fi
 }
@@ -53,6 +53,10 @@ readonly DEFAULT_DATA_FILE="derivative_data.csv"
 readonly DEFAULT_PLOT_FILE="derivative_plot.png"
 readonly PLOT_SCRIPT="plot.gp"
 readonly DEFAULT_X_EXPRESSION="π/6"
+
+readonly RED='\033[0;31m'
+readonly YELLOW='\033[1;33m'
+readonly NC='\033[0m' # No Color
 
 # --- Переопределяеммые переменные ---
 BC_SCALE=$DEFAULT_BC_SCALE
@@ -92,7 +96,7 @@ cleanup() {
 print_point_info(){
   echo "Анализ погрешностей численного дифференцирования"
   echo "Точка анализа: x = $X_EXPRESSION ≈ $X_0"
-  echo "Точное значение проивзодной: cos(π/6) = $DER_EXACT_VALUE"
+  echo "Точное значение производной: cos(π/6) = $DER_EXACT_VALUE"
 }
 
 print_help() {
@@ -123,8 +127,8 @@ parse_args() {
         ;;
       
       -x | --x-point)
-        if [[ -z $2 ]]; then
-          echo "Ошибка: $1 требует последующее значение"
+        if [[ $# -lt 2 || -z $2 ]]; then
+          echo -e "${RED}Ошибка${NC}: $1 требует значение"
           exit 1
         fi
         X_EXPRESSION="${2//pi/π}"
@@ -132,8 +136,8 @@ parse_args() {
         ;;
 
       -d|--data-file)
-          if [[ -z $2 ]]; then
-              echo "Ошибка: $1 требует значение"
+          if [[ $# -lt 2 || -z $2 ]]; then
+              echo -e "${RED}Ошибка${NC}: $1 требует значение"
               exit 1
           fi
           DATA_FILE=$2
@@ -142,7 +146,7 @@ parse_args() {
 
       -p|--plot-file)
           if [[ -z $2 ]]; then
-              echo "Ошибка: $1 требует значение" >&2
+              echo -e "${RED}Ошибка${NC}: $1 требует значение" 
               exit 1
           fi
           PLOT_FILE=$2
