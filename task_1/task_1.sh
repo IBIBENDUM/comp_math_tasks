@@ -76,15 +76,6 @@ DER_EXACT_VALUE=""
 DATA_FILE=$DEFAULT_DATA_FILE
 PLOT_FILE=$DEFAULT_PLOT_FILE
 
-
-# --- Вычисление производной ---
-derivative_central() {
-  local x=$1 h=$2
-  local f_right=$(sin $(calc "$x + $h")) 
-  local f_left=$(sin $(calc "$x - $h")) 
-  calc "($f_right - $f_left) / (2 * $h)"
-}
-
 # --- Вспомогательные функции ---
 init_math_constants() {
   PI=$(calc "4 * a(1)")
@@ -121,6 +112,10 @@ print_point_info(){
   echo "Анализ погрешностей численного дифференцирования"
   echo "Точка анализа: x = $X_EXPRESSION ≈ $X_0"
   echo "Точное значение производной: cos(π/6) = $DER_EXACT_VALUE"
+  echo "Сравниваемые методы:"
+  echo "  1. Правая разность: F(x+h) - F(x) / h"
+  echo "  2. Центральная разность: F(x+h) - F(x-h) / 2h"
+  echo "  3. Вторая разность: (3F(x) - 4F(x-h) + F(x-2h)) / 2h"
 }
 
 print_help() {
@@ -187,19 +182,55 @@ parse_args() {
 }
 
 # --- Основная программа ---
+# F(x+h) - F(x) / h
+derivative_forward() {
+  local x=$1 h=$2
+  local f_right=$(sin $(calc "$x + $h")) 
+  local f_x=$(sin "$x")
+  calc "($f_right - $f_x) / $h"
+}
+
+# F(x+h) - F(x-h) / 2h
+derivative_central() {
+  local x=$1 h=$2
+  local f_right=$(sin $(calc "$x + $h")) 
+  local f_left=$(sin $(calc "$x - $h")) 
+  calc "($f_right - $f_left) / (2 * $h)"
+}
+
+# 3F(x) - 4F(x-h) + F(x-2h)) / 2h
+derivative_second_order() {
+  local x=$1 h=$2
+  local f_x=$(sin "$x")
+  local f_minus_h=$(sin $(calc "$x - $h"))
+  local f_minus_2h=$(sin $(calc "$x - 2 * $h"))
+  calc "(3 * $f_x - 4 * $f_minus_h + $f_minus_2h) / (2 * $h)"
+}
+
+
 calc_der_error(){
-  echo log_h log_error_central > $DATA_FILE
+  echo "log_h,error_forward,error_central,error_second_order" > $DATA_FILE
 
   start_spinner "Вычисление погрешностей..."&
   local spinner_pid=$!
 
-  for log_h in $(seq -10 0.1 -2); do
+  for log_h in $(seq -10 0.1 -0.1); do
     local h=$(pow 10 $log_h)
-    local approx_central=$(derivative_central $X_0 $h)
 
+    local approx_forward=$(derivative_forward $X_0 $h)
+    local approx_central=$(derivative_central $X_0 $h)
+    local approx_second=$(derivative_second_order $X_0 $h)
+    
+    local error_forward=$(abs $(calc "$approx_forward - $DER_EXACT_VALUE"))
     local error_central=$(abs $(calc "$approx_central - $DER_EXACT_VALUE"))
+    local error_second=$(abs $(calc "$approx_second - $DER_EXACT_VALUE"))
+    
+    local log_error_forward=$(log10 $error_forward)
     local log_error_central=$(log10 $error_central)
-    echo $log_h $log_error_central >> $DATA_FILE
+    local log_error_second=$(log10 $error_second)
+    
+    echo "$log_h,$log_error_forward,$log_error_central,$log_error_second" >> $DATA_FILE
+
   done
 
   stop_spinner "$spinner_pid"
@@ -220,9 +251,12 @@ create_plot() {
       # Сетка и легенда
       set grid
       set key top right
+      set datafile separator comma
 
       # Построение графика
-      plot "$DATA_FILE" using 1:2 with linespoints title "Центральная разность"
+      plot "$DATA_FILE" using 1:2 with linespoints title "Правая разность", \
+           "$DATA_FILE" using 1:3 with linespoints title "Центральная разность", \
+           "$DATA_FILE" using 1:4 with linespoints title "Вторая разность"
 EOF
 
     gnuplot $PLOT_SCRIPT 2>/dev/null
